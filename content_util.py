@@ -15,6 +15,11 @@ QUOTATIONS_PATH = rf"{os.environ.get('quotations_path')}"
 STORIES_INDEX_PATH = rf"{os.environ.get('stories_index_path')}"
 
 
+def clear_stdin():
+    while msvcrt.kbhit():
+        msvcrt.getch()
+
+
 def wrap_in_colour(text: str, colour: Optional[Fore]):
     return f"{colour or ''}{text}{Style.RESET_ALL}"
 
@@ -32,15 +37,19 @@ class Option:
 @dataclass
 class Screen:
     options: list[Option]
+    should_exit: bool = False
     current_option: Option = field(init=False)
 
     def __post_init__(self):
         self.current_option = self.options[0]
 
+    def calculate_whitespace_separator(self, option):
+        return floor(round(60 / len(self.options)) - len(str(option)) / 2)
+
     def print_options(self, flush=True):
         options_display = []
         for option in self.options:
-            s = " " * floor(20 - len(str(option)) / 2)  # whitespace separator
+            s = " " * self.calculate_whitespace_separator(option)
             if option is self.current_option:
                 curr_colour = self.current_option.colour
                 options_display.append(
@@ -64,10 +73,12 @@ class Screen:
         listener = keyboard.Listener(on_press=self.handle_input)
         listener.start()
         listener.join()
-        return self.current_option.screen
+        if not self.should_exit:
+            return self.current_option.screen
 
     def handle_input(self, key):
         if key == keyboard.Key.esc:
+            self.should_exit = True
             return False
         if key == keyboard.Key.enter:
             self.print_options(flush=False)
@@ -101,10 +112,12 @@ def main():
 
     view_quotations = Option(text='view', colour=Fore.MAGENTA, func=view_quotations_func)
     new_quotation = Option(text='new', colour=Fore.MAGENTA)
+    edit_quotation = Option(text='edit', colour=Fore.MAGENTA)
     back_quotations = Option(text='back', colour=Fore.RED)
-    quotation_screen = Screen([view_quotations, new_quotation, back_quotations])
+    quotation_screen = Screen([view_quotations, new_quotation, edit_quotation, back_quotations])
     quotations.screen = quotation_screen
     view_quotations.screen = quotation_screen
+    edit_quotation.screen = quotation_screen
     new_quotation.screen = quotation_screen
     back_quotations.screen = screen
 
@@ -121,8 +134,7 @@ def main():
     while (screen := screen.listen()):
         print(wrap_in_colour('>', screen.current_option.colour))
     print(wrap_in_colour('>', Fore.RED))
-    while msvcrt.kbhit():  # clear stdin buffer
-        msvcrt.getch()
+    clear_stdin()
 
 
 if __name__ == '__main__':
