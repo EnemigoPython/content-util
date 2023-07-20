@@ -1,14 +1,18 @@
 import json
 import sys
+import os
 from math import floor
+from dotenv import load_dotenv
 from colorama import Fore, Style, init as colorama_init
 from pynput import keyboard
 from dataclasses import dataclass, field
 from typing import Optional, Callable
 import msvcrt
 
-QUOTATIONS_PATH = './site/content/quotations.json'
-STORIES_INDEX_PATH = './site/content/stories/index.json'
+load_dotenv()
+
+QUOTATIONS_PATH = rf"{os.environ.get('quotations_path')}"
+STORIES_INDEX_PATH = rf"{os.environ.get('stories_index_path')}"
 
 
 def wrap_in_colour(text: str, colour: Optional[Fore]):
