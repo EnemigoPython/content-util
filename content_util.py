@@ -8,6 +8,7 @@ from colorama import Fore, Style, init as colorama_init
 from pynput import keyboard
 from dataclasses import dataclass, field
 from typing import Optional, Callable
+from slugify import slugify
 import msvcrt
 
 load_dotenv()
@@ -118,6 +119,39 @@ def new_quotation_func():
             json.dump(quotations, f, indent=4)
 
 
+def view_stories_func():
+    print("\Stories:\n")
+    with open(STORIES_INDEX_PATH, "r") as f:
+        quotations = json.load(f)
+        for e, q in enumerate(quotations, 1):
+            print(f"{e}:")
+            print(f"\tTitle: {q['title']}")
+            print(f"\tAuthor: {q['author']}")
+            print(f"\tPublished: {q['date_published']}")
+            print(f"\tReleased: {'yes' if q['released'] else 'no'}")
+
+
+def new_story_func():
+    clear_stdin()
+    title = input("Title:\n\t")
+    author = input("Author:\n\t")
+    year = input("Year published:\n\t")
+    month = input("Month published:\n\t")
+    day = input("Day published:\n\t")
+    with open(STORIES_INDEX_PATH, "r") as f:
+        quotations = json.load(f)
+        quotations.append(
+            {
+                'slug': slugify(title),
+                'title': title, 
+                'author': author, 
+                'date_published': f'{year}-{month}-{day}',
+                'released': False
+            }
+        )
+        with open(STORIES_INDEX_PATH, "w") as f:
+            json.dump(quotations, f, indent=4)
+
 
 def main():
     colorama_init()
@@ -134,10 +168,11 @@ def main():
     quotations.screen = quotation_screen
     back_quotations.screen = screen
 
-    view_stories = Option(text='view', colour=Fore.CYAN)
-    new_story = Option(text='new', colour=Fore.CYAN)
+    view_stories = Option(text='view', colour=Fore.CYAN, func=view_stories_func)
+    new_story = Option(text='new', colour=Fore.CYAN, func=new_story_func)
+    edit_story = Option(text='edit', colour=Fore.CYAN)
     back_stories = Option(text='back', colour=Fore.RED)
-    stories_screen = Screen([view_stories, new_story, back_stories])
+    stories_screen = Screen([view_stories, new_story, edit_story, back_stories])
     stories.screen = stories_screen
     back_stories.screen = screen
 
