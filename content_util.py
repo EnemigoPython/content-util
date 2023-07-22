@@ -15,6 +15,7 @@ load_dotenv()
 
 QUOTATIONS_PATH = rf"{os.environ.get('quotations_path')}"
 STORIES_INDEX_PATH = rf"{os.environ.get('stories_index_path')}"
+STORIES_DIR = rf"{os.environ.get('stories_dir')}"
 
 
 def clear_stdin():
@@ -138,11 +139,12 @@ def new_story_func():
     year = input("Year published:\n\t")
     month = input("Month published:\n\t")
     day = input("Day published:\n\t")
+    slug = slugify(title)
     with open(STORIES_INDEX_PATH, "r") as f:
         quotations = json.load(f)
         quotations.append(
             {
-                'slug': slugify(title),
+                'slug': slug,
                 'title': title, 
                 'author': author, 
                 'date_published': f'{year}-{month}-{day}',
@@ -151,6 +153,7 @@ def new_story_func():
         )
         with open(STORIES_INDEX_PATH, "w") as f:
             json.dump(quotations, f, indent=4)
+    os.mkdir(f'{STORIES_DIR}/{slug}')
 
 
 def main():
