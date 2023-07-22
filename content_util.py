@@ -3,6 +3,7 @@ import sys
 import time
 import os
 from math import floor
+from datetime import datetime
 from dotenv import load_dotenv
 from colorama import Fore, Style, init as colorama_init
 from pynput import keyboard
@@ -141,8 +142,8 @@ def new_story_func():
     day = input("Day published:\n\t")
     slug = slugify(title)
     with open(STORIES_INDEX_PATH, "r") as f:
-        quotations = json.load(f)
-        quotations.append(
+        stories = json.load(f)
+        stories.append(
             {
                 'slug': slug,
                 'title': title, 
@@ -152,8 +153,25 @@ def new_story_func():
             }
         )
         with open(STORIES_INDEX_PATH, "w") as f:
-            json.dump(quotations, f, indent=4)
+            json.dump(stories, f, indent=4)
     os.mkdir(f'{STORIES_DIR}/{slug}')
+
+
+def release_story_func():
+    clear_stdin()
+    with open(STORIES_INDEX_PATH, "r") as f:
+        stories = json.load(f)
+        unreleased_stories = [i for i in stories if not i["released"]]
+        for e, q in enumerate(unreleased_stories, 1):
+            print(f"{e}:\tTitle: {q['title']}")
+        n = int(input("\nSelect which story to release:\n"))
+        with open(STORIES_INDEX_PATH, "r") as f:
+            stories = json.load(f)
+            story_slug = unreleased_stories[n-1]['slug']
+            story = [i for i in stories if i['slug'] == story_slug][0]
+            story["released"] = str(datetime.utcnow())
+        with open(STORIES_INDEX_PATH, "w") as f:
+            json.dump(stories, f, indent=4)
 
 
 def main():
@@ -165,17 +183,16 @@ def main():
 
     view_quotations = Option(text='view', colour=Fore.MAGENTA, func=view_quotations_func)
     new_quotation = Option(text='new', colour=Fore.MAGENTA, func=new_quotation_func)
-    edit_quotation = Option(text='edit', colour=Fore.MAGENTA)
     back_quotations = Option(text='back', colour=Fore.RED)
-    quotation_screen = Screen([view_quotations, new_quotation, edit_quotation, back_quotations])
+    quotation_screen = Screen([view_quotations, new_quotation, back_quotations])
     quotations.screen = quotation_screen
     back_quotations.screen = screen
 
     view_stories = Option(text='view', colour=Fore.CYAN, func=view_stories_func)
     new_story = Option(text='new', colour=Fore.CYAN, func=new_story_func)
-    edit_story = Option(text='edit', colour=Fore.CYAN)
+    release_story = Option(text='release', colour=Fore.CYAN, func=release_story_func)
     back_stories = Option(text='back', colour=Fore.RED)
-    stories_screen = Screen([view_stories, new_story, edit_story, back_stories])
+    stories_screen = Screen([view_stories, new_story, release_story, back_stories])
     stories.screen = stories_screen
     back_stories.screen = screen
 
