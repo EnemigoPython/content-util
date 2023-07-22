@@ -1,5 +1,6 @@
 import json
 import sys
+import time
 import os
 from math import floor
 from dotenv import load_dotenv
@@ -30,6 +31,7 @@ class Option:
     colour: Optional[Fore] = None
     screen: Optional['Screen'] = None
     func: Optional[Callable] = None
+    should_exit: bool = False
 
     def __str__(self) -> str:
         return wrap_in_colour(self.text, self.colour)
@@ -73,8 +75,8 @@ class Screen:
         listener = keyboard.Listener(on_press=self.handle_input)
         listener.start()
         listener.join()
-        if not self.should_exit:
-            return self.current_option.screen
+        if not self.should_exit and not self.current_option.should_exit:
+            return self
 
     def handle_input(self, key):
         if key == keyboard.Key.esc:
@@ -82,8 +84,6 @@ class Screen:
             return False
         if key == keyboard.Key.enter:
             self.print_options(flush=False)
-            if self.current_option.func is not None:
-                self.current_option.func()
             return False
         try:
             if key.name == 'left':
@@ -93,32 +93,45 @@ class Screen:
         except AttributeError:
             pass
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}: {self.current_option}"
+
 
 def view_quotations_func():
     print("\nQuotations:\n")
     with open(QUOTATIONS_PATH, "r") as f:
         quotations = json.load(f)
         for e, q in enumerate(quotations, 1):
-            print(f"{e}: {q['text']}\n")
-            print(f"Attributed: {q['attributed']}\n")
+            print(f"{e}:")
+            print(f"\t{q['text']}\n")
+            print(f"\tAttributed: {q['attributed']}\n")
+
+
+def new_quotation_func():
+    clear_stdin()
+    text = input("Text:\n\t")
+    attributed = input("Attributed:\n\t")
+    with open(QUOTATIONS_PATH, "r") as f:
+        quotations = json.load(f)
+        quotations.append({'text': text, 'attributed': attributed})
+        with open(QUOTATIONS_PATH, "w") as f:
+            json.dump(quotations, f, indent=4)
+
 
 
 def main():
     colorama_init()
     quotations = Option(text='quotations', colour=Fore.MAGENTA)
     stories = Option(text='stories', colour=Fore.CYAN)
-    _exit = Option(text='exit', colour=Fore.RED)
+    _exit = Option(text='exit', colour=Fore.RED, should_exit=True)
     screen = Screen([quotations, stories, _exit])
 
     view_quotations = Option(text='view', colour=Fore.MAGENTA, func=view_quotations_func)
-    new_quotation = Option(text='new', colour=Fore.MAGENTA)
+    new_quotation = Option(text='new', colour=Fore.MAGENTA, func=new_quotation_func)
     edit_quotation = Option(text='edit', colour=Fore.MAGENTA)
     back_quotations = Option(text='back', colour=Fore.RED)
     quotation_screen = Screen([view_quotations, new_quotation, edit_quotation, back_quotations])
     quotations.screen = quotation_screen
-    view_quotations.screen = quotation_screen
-    edit_quotation.screen = quotation_screen
-    new_quotation.screen = quotation_screen
     back_quotations.screen = screen
 
     view_stories = Option(text='view', colour=Fore.CYAN)
@@ -126,13 +139,18 @@ def main():
     back_stories = Option(text='back', colour=Fore.RED)
     stories_screen = Screen([view_stories, new_story, back_stories])
     stories.screen = stories_screen
-    view_stories.screen = stories_screen
-    new_story.screen = stories_screen
     back_stories.screen = screen
 
     print(wrap_in_colour('>', Fore.GREEN))
-    while (screen := screen.listen()):
-        print(wrap_in_colour('>', screen.current_option.colour))
+    try:
+        while (screen := screen.listen()):
+            if screen.current_option.func is not None:
+                time.sleep(0.1)  # mysteriously, stdin needs this timeout
+                screen.current_option.func()
+            screen = screen.current_option.screen or screen
+            print(wrap_in_colour('>', screen.current_option.colour))
+    except KeyboardInterrupt:
+        print(wrap_in_colour("\rExiting", Fore.RED))
     print(wrap_in_colour('>', Fore.RED))
     clear_stdin()
 
